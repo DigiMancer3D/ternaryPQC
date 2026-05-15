@@ -45,8 +45,11 @@ echo -e "${GREEN}✓ Dependencies OK${NC}\n"
 echo -e "${YELLOW}[3/6] Checking jansson library...${NC}"
 if ! pkg-config --exists jansson; then
     echo "Installing jansson..."
-    sudo apt-get update -qq
-    sudo apt-get install -y libjansson-dev > /dev/null 2>&1
+    sudo apt install -y libjansson-dev 2>/dev/null || {
+        echo -e "${YELLOW}⚠ Could not install jansson via apt${NC}"
+        echo "Try manual install: sudo apt install libjansson-dev"
+        exit 1
+    }
 fi
 echo -e "${GREEN}✓ jansson OK${NC}\n"
 
@@ -68,14 +71,18 @@ else
     mkdir -p build
     cd build
     
-    cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
-    make -j$(nproc)
-    sudo make install
+    echo "Configuring liboqs..."
+    cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. > /dev/null
+    echo "Building liboqs (this may take 2-3 minutes)..."
+    make -j$(nproc) > /dev/null 2>&1
+    echo "Installing liboqs..."
+    sudo make install > /dev/null 2>&1
     
     # Update library cache
     sudo ldconfig
     
     cd ../../..
+    echo -e "${GREEN}✓ liboqs built and installed${NC}"
 fi
 echo -e "${GREEN}✓ liboqs ready${NC}\n"
 
@@ -86,20 +93,33 @@ echo -e "${GREEN}✓ svc-wallet created${NC}\n"
 
 # Compile main program
 echo -e "${YELLOW}[6/6] Compiling pqc_keygen...${NC}"
-if gcc -o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3 2>/dev/null; then
+COMPILE_FLAGS="-o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3"
+
+if gcc $COMPILE_FLAGS 2>/dev/null; then
     echo -e "${GREEN}✓ Compilation successful${NC}\n"
+elif gcc -I/usr/local/include -L/usr/local/lib $COMPILE_FLAGS 2>/dev/null; then
+    echo -e "${GREEN}✓ Compilation successful (with local paths)${NC}\n"
 else
     echo -e "${RED}✗ Compilation failed${NC}"
-    echo "Try: gcc -o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3 -v"
+    echo "Try manual compile:"
+    echo "  gcc -I/usr/local/include -L/usr/local/lib -o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3 -v"
     exit 1
 fi
 
 # Also compile validator
 echo -e "${YELLOW}Compiling validate_kchain...${NC}"
-if gcc -o validate_kchain validate_kchain.c -loqs -ljansson -lm -O3 2>/dev/null; then
+if gcc -o validate_kchain validate_kchain.c -loqs -ljansson -lm -O3 2>/dev/null || \
+   gcc -I/usr/local/include -L/usr/local/lib -o validate_kchain validate_kchain.c -loqs -ljansson -lm -O3 2>/dev/null; then
     echo -e "${GREEN}✓ validate_kchain compiled${NC}\n"
 else
     echo -e "${YELLOW}⚠ validate_kchain compilation skipped (optional)${NC}\n"
+fi
+
+# Set library path if needed
+if [ ! -z "$LD_LIBRARY_PATH" ]; then
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+else
+    export LD_LIBRARY_PATH=/usr/local/lib
 fi
 
 echo "========================================="
