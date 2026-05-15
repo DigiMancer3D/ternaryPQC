@@ -3,7 +3,7 @@
  * 
  * Generates post-quantum cryptographic keychains using:
  * - Falcon-512 (lattice-based signatures)
- * - SPHINCS+-SHA2-128s (hash-based signatures)
+ * - Dilithium3 (lattice-based signatures)
  * - Ternary PQC seed expansion (SPX-QEC pattern cutting)
  * 
  * Output: svc-wallet/pqc_master_YYYYMMDD_HHMMSS.kchain (JSON)
@@ -312,10 +312,10 @@ typedef struct {
     size_t falcon_pk_len;
     unsigned char *falcon_sk;
     size_t falcon_sk_len;
-    unsigned char *sphincs_pk;
-    size_t sphincs_pk_len;
-    unsigned char *sphincs_sk;
-    size_t sphincs_sk_len;
+    unsigned char *dilithium_pk;
+    size_t dilithium_pk_len;
+    unsigned char *dilithium_sk;
+    size_t dilithium_sk_len;
 } KeyPair;
 
 static KeyPair generate_falcon_keypair(void) {
@@ -346,11 +346,11 @@ static KeyPair generate_falcon_keypair(void) {
     return kp;
 }
 
-static KeyPair generate_sphincs_keypair(void) {
+static KeyPair generate_dilithium_keypair(void) {
     KeyPair kp = {0};
-    OQS_SIG *sig = OQS_SIG_new("SPHINCS+-SHA2-128s");
+    OQS_SIG *sig = OQS_SIG_new("Dilithium3");
     if (!sig) {
-        fprintf(stderr, "Failed to create SPHINCS+ context\n");
+        fprintf(stderr, "Failed to create Dilithium3 context\n");
         return kp;
     }
 
@@ -358,17 +358,17 @@ static KeyPair generate_sphincs_keypair(void) {
     unsigned char *sk = (unsigned char *)malloc(sig->length_secret_key);
 
     if (OQS_SIG_keypair(sig, pk, sk) != OQS_SUCCESS) {
-        fprintf(stderr, "SPHINCS+ keypair generation failed\n");
+        fprintf(stderr, "Dilithium3 keypair generation failed\n");
         free(pk);
         free(sk);
         OQS_SIG_free(sig);
         return kp;
     }
 
-    kp.sphincs_pk = pk;
-    kp.sphincs_pk_len = sig->length_public_key;
-    kp.sphincs_sk = sk;
-    kp.sphincs_sk_len = sig->length_secret_key;
+    kp.dilithium_pk = pk;
+    kp.dilithium_pk_len = sig->length_public_key;
+    kp.dilithium_sk = sk;
+    kp.dilithium_sk_len = sig->length_secret_key;
 
     OQS_SIG_free(sig);
     return kp;
@@ -445,23 +445,23 @@ int main(void) {
     printf("      Public key:  %zu bytes\n", falcon_master.falcon_pk_len);
     printf("      Private key: %zu bytes\n\n", falcon_master.falcon_sk_len);
 
-    /* Step 6: Generate SPHINCS+ master keys */
-    printf("[6/7] Generating SPHINCS+-SHA2-128s master keypair...\n");
-    KeyPair sphincs_master = generate_sphincs_keypair();
-    if (!sphincs_master.sphincs_pk) {
-        fprintf(stderr, "Failed to generate SPHINCS+ keys\n");
+    /* Step 6: Generate Dilithium master keys */
+    printf("[6/7] Generating Dilithium3 master keypair...\n");
+    KeyPair dilithium_master = generate_dilithium_keypair();
+    if (!dilithium_master.dilithium_pk) {
+        fprintf(stderr, "Failed to generate Dilithium3 keys\n");
         return 1;
     }
-    printf("      Public key:  %zu bytes\n", sphincs_master.sphincs_pk_len);
-    printf("      Private key: %zu bytes\n\n", sphincs_master.sphincs_sk_len);
+    printf("      Public key:  %zu bytes\n", dilithium_master.dilithium_pk_len);
+    printf("      Private key: %zu bytes\n\n", dilithium_master.dilithium_sk_len);
 
     /* Step 7: Generate role keypairs */
     printf("[7/7] Generating 8 role keypairs...\n");
-    KeyPair role_keys[ROLE_COUNT][2];  /* [role][0=falcon, 1=sphincs] */
+    KeyPair role_keys[ROLE_COUNT][2];  /* [role][0=falcon, 1=dilithium] */
     for (int role = 0; role < ROLE_COUNT; role++) {
         role_keys[role][0] = generate_falcon_keypair();
-        role_keys[role][1] = generate_sphincs_keypair();
-        if (!role_keys[role][0].falcon_pk || !role_keys[role][1].sphincs_pk) {
+        role_keys[role][1] = generate_dilithium_keypair();
+        if (!role_keys[role][0].falcon_pk || !role_keys[role][1].dilithium_pk) {
             fprintf(stderr, "Failed to generate role %d keys\n", role);
             return 1;
         }
@@ -489,11 +489,11 @@ int main(void) {
     json_object_set_new(keys_obj, "falcon_512_master_pk", json_string(falcon_pk_hex));
     json_object_set_new(keys_obj, "falcon_512_master_sk", json_string(falcon_sk_hex));
 
-    /* SPHINCS+ master */
-    char *sphincs_pk_hex = bytes_to_hex(sphincs_master.sphincs_pk, sphincs_master.sphincs_pk_len);
-    char *sphincs_sk_hex = bytes_to_hex(sphincs_master.sphincs_sk, sphincs_master.sphincs_sk_len);
-    json_object_set_new(keys_obj, "sphincs_sha2_128s_master_pk", json_string(sphincs_pk_hex));
-    json_object_set_new(keys_obj, "sphincs_sha2_128s_master_sk", json_string(sphincs_sk_hex));
+    /* Dilithium master */
+    char *dilithium_pk_hex = bytes_to_hex(dilithium_master.dilithium_pk, dilithium_master.dilithium_pk_len);
+    char *dilithium_sk_hex = bytes_to_hex(dilithium_master.dilithium_sk, dilithium_master.dilithium_sk_len);
+    json_object_set_new(keys_obj, "dilithium3_master_pk", json_string(dilithium_pk_hex));
+    json_object_set_new(keys_obj, "dilithium3_master_sk", json_string(dilithium_sk_hex));
 
     /* Roles */
     json_t *roles_array = json_array();
@@ -503,20 +503,20 @@ int main(void) {
 
         char *f_pk = bytes_to_hex(role_keys[role][0].falcon_pk, role_keys[role][0].falcon_pk_len);
         char *f_sk = bytes_to_hex(role_keys[role][0].falcon_sk, role_keys[role][0].falcon_sk_len);
-        char *s_pk = bytes_to_hex(role_keys[role][1].sphincs_pk, role_keys[role][1].sphincs_pk_len);
-        char *s_sk = bytes_to_hex(role_keys[role][1].sphincs_sk, role_keys[role][1].sphincs_sk_len);
+        char *d_pk = bytes_to_hex(role_keys[role][1].dilithium_pk, role_keys[role][1].dilithium_pk_len);
+        char *d_sk = bytes_to_hex(role_keys[role][1].dilithium_sk, role_keys[role][1].dilithium_sk_len);
 
         json_object_set_new(role_obj, "falcon_512_pk", json_string(f_pk));
         json_object_set_new(role_obj, "falcon_512_sk", json_string(f_sk));
-        json_object_set_new(role_obj, "sphincs_sha2_128s_pk", json_string(s_pk));
-        json_object_set_new(role_obj, "sphincs_sha2_128s_sk", json_string(s_sk));
+        json_object_set_new(role_obj, "dilithium3_pk", json_string(d_pk));
+        json_object_set_new(role_obj, "dilithium3_sk", json_string(d_sk));
 
         json_array_append_new(roles_array, role_obj);
 
         free(f_pk);
         free(f_sk);
-        free(s_pk);
-        free(s_sk);
+        free(d_pk);
+        free(d_sk);
     }
     json_object_set_new(keys_obj, "roles", roles_array);
     json_object_set_new(root, "keys", keys_obj);
@@ -524,7 +524,7 @@ int main(void) {
     /* Metadata */
     char *timestamp = get_iso_timestamp();
     json_object_set_new(root, "generated_at", json_string(timestamp));
-    json_object_set_new(root, "algorithm", json_string("Falcon-512 + SPHINCS+-SHA2-128s"));
+    json_object_set_new(root, "algorithm", json_string("Falcon-512 + Dilithium3"));
     json_object_set_new(root, "library", json_string("liboqs 0.12.x"));
     json_object_set_new(root, "note", json_string("All public and private keys are included. Seed is cryptographically secure."));
 
@@ -543,21 +543,21 @@ int main(void) {
     free(master_hex);
     free(falcon_pk_hex);
     free(falcon_sk_hex);
-    free(sphincs_pk_hex);
-    free(sphincs_sk_hex);
+    free(dilithium_pk_hex);
+    free(dilithium_sk_hex);
     free(timestamp);
     free(filename);
 
     if (falcon_master.falcon_pk) free(falcon_master.falcon_pk);
     if (falcon_master.falcon_sk) free(falcon_master.falcon_sk);
-    if (sphincs_master.sphincs_pk) free(sphincs_master.sphincs_pk);
-    if (sphincs_master.sphincs_sk) free(sphincs_master.sphincs_sk);
+    if (dilithium_master.dilithium_pk) free(dilithium_master.dilithium_pk);
+    if (dilithium_master.dilithium_sk) free(dilithium_master.dilithium_sk);
 
     for (int role = 0; role < ROLE_COUNT; role++) {
         if (role_keys[role][0].falcon_pk) free(role_keys[role][0].falcon_pk);
         if (role_keys[role][0].falcon_sk) free(role_keys[role][0].falcon_sk);
-        if (role_keys[role][1].sphincs_pk) free(role_keys[role][1].sphincs_pk);
-        if (role_keys[role][1].sphincs_sk) free(role_keys[role][1].sphincs_sk);
+        if (role_keys[role][1].dilithium_pk) free(role_keys[role][1].dilithium_pk);
+        if (role_keys[role][1].dilithium_sk) free(role_keys[role][1].dilithium_sk);
     }
 
     json_decref(root);
