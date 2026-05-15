@@ -9,10 +9,11 @@
  * Output: svc-wallet/pqc_master_YYYYMMDD_HHMMSS.kchain (JSON)
  * 
  * Build:
- *   gcc -o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3
+ *   gcc -I/usr/local/include -L/usr/local/lib -o pqc_keygen pqc_keygen.c -loqs -ljansson -lm -O3
  * 
  * Run:
  *   mkdir -p svc-wallet
+ *   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
  *   ./pqc_keygen
  * 
  */
@@ -22,9 +23,9 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <sys/stat.h>
 #include <oqs/oqs.h>
 #include <jansson.h>
-#include <sys/stat.h>
 
 #define TERNARY_LENGTH 6000
 #define ROLE_COUNT 8
@@ -328,7 +329,7 @@ static KeyPair generate_falcon_keypair(void) {
     unsigned char *pk = (unsigned char *)malloc(sig->length_public_key);
     unsigned char *sk = (unsigned char *)malloc(sig->length_secret_key);
 
-    if (OQS_SIG_keypair(sig, pk, sk) != OQS_STATUS_SUCCESS) {
+    if (OQS_SIG_keypair(sig, pk, sk) != OQS_SUCCESS) {
         fprintf(stderr, "Falcon keypair generation failed\n");
         free(pk);
         free(sk);
@@ -356,7 +357,7 @@ static KeyPair generate_sphincs_keypair(void) {
     unsigned char *pk = (unsigned char *)malloc(sig->length_public_key);
     unsigned char *sk = (unsigned char *)malloc(sig->length_secret_key);
 
-    if (OQS_SIG_keypair(sig, pk, sk) != OQS_STATUS_SUCCESS) {
+    if (OQS_SIG_keypair(sig, pk, sk) != OQS_SUCCESS) {
         fprintf(stderr, "SPHINCS+ keypair generation failed\n");
         free(pk);
         free(sk);
