@@ -2,7 +2,7 @@
 
 **Complete Post-Quantum Cryptographic keychain generator, validator, password manager, and game** for the ternaryPQC process-separation wallet system.
 
-Generates **Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s (SPHINCS+)** master and role keys from a high-entropy 6000-trit ternary seed, then lets you **cryptographically validate** every key before use. Includes Ring Password generator and the #HASHBREAKER interactive game.
+Generates **Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s (SPHINCS+)** master and role keys from a high-entropy 6000-trit ternary seed, then lets you **cryptographically validate** every key before use.
 
 ---
 
@@ -27,11 +27,18 @@ Generates **Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s (SPHINCS+)** master and r
 
 ✅ **Multiple Validators & Testers**
 - **validate_kchain**: Full cryptographic sign + verify operations
+- **pqc_key_validator_robust**: Enhanced validator with error tolerance
 - **test_algs**: Test algorithm availability in your liboqs build
 - **list_pqc_sigs**: Display all enabled signature schemes
+- **list_all_algs**: Comprehensive algorithm listing utility
 - Tests master keys + all role keys (0-8)
 - Tolerant to whitespace, newlines, and formatting variations
 - Perfect for "Test Your Build" after key generation
+
+✅ **Hybrid Signing & Advanced Tools**
+- **pqc_hybrid_signer**: Multi-algorithm signing utility for defense-in-depth
+- **pqc_sphincs_plus**: Dedicated SPHINCS+ implementation
+- **pqc_keygen_new**: Enhanced keychain generator with improved entropy distillation
 
 ✅ **Ring Password Generator**
 - Hashes passwords using SHA3-512
@@ -125,6 +132,12 @@ Generate a new keychain with the SPX-QEC ternary distillation pipeline:
 ./pqc_keygen
 ```
 
+Or use the enhanced version with improved entropy:
+
+```bash
+./pqc_keygen_new
+```
+
 **Output:** `svc-wallet/pqc_master_YYYYMMDD_HHMMSS.kchain`
 
 **Console output:**
@@ -171,6 +184,15 @@ gcc -O2 -o validate_kchain validate_kchain.c \
 ./validate_kchain ./svc-wallet/pqc_master_*.kchain
 ```
 
+Or use the robust validator for enhanced error handling:
+
+```bash
+gcc -O2 -o pqc_key_validator_robust pqc_key_validator_robust.c \
+    -loqs -ljansson -I/usr/local/include -L/usr/local/lib
+
+./pqc_key_validator_robust ./svc-wallet/pqc_master_*.kchain
+```
+
 **Example successful output:**
 
 ```
@@ -200,7 +222,22 @@ gcc -O2 -o validate_kchain validate_kchain.c \
 
 If validation passes, the keys are ready for production use.
 
-### Step 5: Setup Ring Password (Ring-based Authentication)
+### Step 5: Hybrid Signing (Multi-Algorithm Signatures)
+
+Use the hybrid signer for defense-in-depth signing across multiple algorithms:
+
+```bash
+# Build hybrid signer
+gcc -O2 -o pqc_hybrid_signer pqc_hybrid_signer.c \
+    -loqs -ljansson -I/usr/local/include -L/usr/local/lib
+
+# Sign a message with all three algorithms
+./pqc_hybrid_signer ./svc-wallet/pqc_master_*.kchain "your message here"
+```
+
+This tool generates cryptographic signatures using Falcon-512, ML-DSA-65, and SPHINCS+ simultaneously for maximum security assurance.
+
+### Step 6: Setup Ring Password (Ring-based Authentication)
 
 Generate a Ring-authenticated password proof:
 
@@ -225,7 +262,7 @@ The generated `.ssp` file contains:
 - Full SHA3-512 hash of the password
 - "Super Secret Password" footer (for manual verification)
 
-### Step 6: Play #HASHBREAKER (Interactive Game)
+### Step 7: Play #HASHBREAKER (Interactive Game)
 
 Launch the interactive cryptographic game:
 
@@ -273,8 +310,24 @@ gcc -I/usr/local/include -L/usr/local/lib \
     -loqs -ljansson -lm -O3
 
 gcc -I/usr/local/include -L/usr/local/lib \
+    -o pqc_keygen_new pqc_keygen_new.c \
+    -loqs -ljansson -lm -O3
+
+gcc -I/usr/local/include -L/usr/local/lib \
     -o validate_kchain validate_kchain.c \
     -loqs -ljansson -lm -O3
+
+gcc -I/usr/local/include -L/usr/local/lib \
+    -o pqc_key_validator_robust pqc_key_validator_robust.c \
+    -loqs -ljansson -lm -O3
+
+gcc -I/usr/local/include -L/usr/local/lib \
+    -o pqc_hybrid_signer pqc_hybrid_signer.c \
+    -loqs -ljansson -lm -O3
+
+gcc -I/usr/local/include -L/usr/local/lib \
+    -o pqc_sphincs_plus pqc_sphincs_plus.c \
+    -loqs -O3
 
 gcc -I/usr/local/include -L/usr/local/lib \
     -o test_algs test_algs.c \
@@ -282,6 +335,10 @@ gcc -I/usr/local/include -L/usr/local/lib \
 
 gcc -I/usr/local/include -L/usr/local/lib \
     -o list_pqc_sigs list_pqc_sigs.c \
+    -loqs -O2
+
+gcc -I/usr/local/include -L/usr/local/lib \
+    -o list_all_algs list_all_algs.c \
     -loqs -O2
 
 gcc -I/usr/local/include -L/usr/local/lib \
@@ -303,18 +360,23 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 ```
 ternaryPQC/
-├── pqc_keygen.c              # Main keychain generator (SPX-QEC driven)
-├── validate_kchain.c         # Cryptographic validator (sign/verify test)
-├── test_algs.c              # Algorithm availability tester
-├── list_pqc_sigs.c          # List all supported algorithms
-├── ring_password.c          # Ring-authenticated password generator
-├── game.py                  # #HASHBREAKER interactive game
-├── setup.sh                 # One-click setup script
-├── svc-wallet/              # .kchain files (generated)
-├── BUILD_INSTRUCTIONS.md    # Additional build details
-├── README.md                # This file
-├── icon.png                 # Game window icon
-└── image.png                # Game logo
+├── pqc_keygen.c                    # Main keychain generator (SPX-QEC driven)
+├── pqc_keygen_new.c                # Enhanced keychain generator
+├── validate_kchain.c               # Cryptographic validator (sign/verify test)
+├── pqc_key_validator_robust.c      # Robust validator with enhanced error handling
+├── pqc_hybrid_signer.c             # Multi-algorithm hybrid signing utility
+├── pqc_sphincs_plus.c              # SPHINCS+ specific implementation
+├── test_algs.c                     # Algorithm availability tester
+├── list_pqc_sigs.c                 # List enabled signature schemes
+├── list_all_algs.c                 # Comprehensive algorithm listing utility
+├── ring_password.c                 # Ring-authenticated password generator
+├── game.py                         # #HASHBREAKER interactive game
+├── setup.sh                        # One-click setup script
+├── svc-wallet/                     # .kchain files (generated)
+├── BUILD_INSTRUCTIONS.md           # Additional build details
+├── README.md                       # This file
+├── icon.png                        # Game window icon
+└── image.png                       # Game logo
 ```
 
 ---
@@ -323,10 +385,15 @@ ternaryPQC/
 
 | Program | Purpose | Input | Output |
 |---------|---------|-------|--------|
-| **pqc_keygen** | Generate keychain | None (generates entropy) | `pqc_master_*.kchain` |
+| **pqc_keygen** | Generate keychain (standard) | None (generates entropy) | `pqc_master_*.kchain` |
+| **pqc_keygen_new** | Generate keychain (enhanced) | None (generates entropy) | `pqc_master_*.kchain` |
 | **validate_kchain** | Verify keychain validity | `*.kchain` file | Sign/verify test results |
+| **pqc_key_validator_robust** | Robust keychain validation | `*.kchain` file | Enhanced sign/verify results |
+| **pqc_hybrid_signer** | Multi-algorithm signing | Keychain + message | Falcon + ML-DSA + SPHINCS+ signatures |
+| **pqc_sphincs_plus** | SPHINCS+ specific signer | Keychain + message | SPHINCS+ signature |
 | **test_algs** | Check algorithm support | None | Algorithm availability |
-| **list_pqc_sigs** | List all algorithms | None | Full algorithm list |
+| **list_pqc_sigs** | List enabled algorithms | None | Signature scheme list |
+| **list_all_algs** | List all algorithms | None | Comprehensive algorithm list |
 | **ring_password** | Generate Ring0 proof | Password string | `*.ssp` file + Ring0 hash |
 | **game.py** | Play #HASHBREAKER | Text/File/Hash | Leaderboard scores |
 
@@ -388,7 +455,7 @@ The generated `.kchain` file is a complete JSON document:
 
 ## Supported Algorithms (Full List from liboqs 0.12.x)
 
-Run `./list_pqc_sigs` to see your specific build. Common signature schemes:
+Run `./list_pqc_sigs` or `./list_all_algs` to see your specific build. Common signature schemes:
 
 **Lattice-based:**
 - Falcon-512, Falcon-1024
@@ -428,8 +495,8 @@ const char *pk_hex = json_string_value(
 | Issue | Solution |
 |-------|----------|
 | **liboqs not found** | Run `export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH` and add to `~/.bashrc` |
-| **Validator fails to parse** | Use `validate_kchain.c` (robust version handles formatting variations) |
-| **Test algorithm fails** | Run `./list_pqc_sigs` to check what's available in your build |
+| **Validator fails to parse** | Use `pqc_key_validator_robust.c` (robust version handles formatting variations) |
+| **Test algorithm fails** | Run `./list_pqc_sigs` or `./list_all_algs` to check what's available in your build |
 | **gcc: command not found** | Install with `sudo apt install build-essential` |
 | **jansson library missing** | Install with `sudo apt install libjansson-dev` |
 | **Python game won't start** | Ensure `python3-tk` is installed: `sudo apt install python3-tk` |
@@ -456,6 +523,7 @@ EOF
 🔐 **Private keys are fully exposed in JSON** (intended for your controlled environment)  
 ✅ **All entropy is cryptographically secure** (via OpenSSL EVP + liboqs)  
 ✅ **Validator performs live sign/verify**: only mathematically valid keys pass  
+✅ **Hybrid signer**: Multiple algorithms provide defense-in-depth  
 ✅ **Ring password**: SHA3-512 hashing, suitable for ringCT integration  
 ✅ **Game security**: Uses actual keychain data as challenge material  
 ⚠️ **Always store `.kchain` files with strict permissions:**
@@ -474,7 +542,8 @@ gpg --symmetric --cipher-algo AES256 svc-wallet/pqc_master_*.kchain
 
 - **Key generation**: ~2-3 seconds (includes SPX-QEC distillation)
 - **Validation**: ~1-2 seconds (all algorithms tested)
-- **Binary size**: pqc_keygen ~500 KB, validate_kchain ~400 KB
+- **Hybrid signing**: ~3-5 seconds (all three algorithms)
+- **Binary size**: pqc_keygen ~500 KB, validate_kchain ~400 KB, pqc_hybrid_signer ~600 KB
 - **Game startup**: <1 second
 - **Ring password**: <100ms
 
@@ -500,11 +569,13 @@ This project is part of the ternaryPQC initiative for quantum-resistant infrastr
 **Made for the ternaryPQC project**: Quantum-resistant infrastructure for [self-verifying coin (SVC) wallets](https://github.com/DigiMancer3D/quantum_fruit/tree/main/SVC).
 
 **Components:**
-- `pqc_keygen`: SPX-QEC ternary seed distillation + multi-algorithm key generation
-- `validate_kchain`: Cryptographic verification suite
+- `pqc_keygen` / `pqc_keygen_new`: SPX-QEC ternary seed distillation + multi-algorithm key generation
+- `validate_kchain` / `pqc_key_validator_robust`: Cryptographic verification suite
+- `pqc_hybrid_signer`: Multi-algorithm signing for defense-in-depth
+- `pqc_sphincs_plus`: Dedicated SPHINCS+ implementation
 - `ring_password`: Ring0 proof generator for ringCT integration
 - `game.py`: #HASHBREAKER interactive learning/testing tool
-- `test_algs` / `list_pqc_sigs`: Environment diagnostics
+- `test_algs` / `list_pqc_sigs` / `list_all_algs`: Environment diagnostics
 
 **Repository**: https://github.com/DigiMancer3D/ternaryPQC  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-25
