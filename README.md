@@ -1,581 +1,88 @@
-# ternaryPQC - Post-Quantum Cryptographic Wallet System
+# ternaryPQC: Post-Quantum Cryptographic Wallet System 
 
-**Complete Post-Quantum Cryptographic keychain generator, validator, password manager, and game** for the ternaryPQC process-separation wallet system.
+![ternaryPQC Icon](icon.png)
 
-Generates **Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s (SPHINCS+)** master and role keys from a high-entropy 6000-trit ternary seed, then lets you **cryptographically validate** every key before use.
+**ternaryPQC** is a custom toolkit for building quantum-resistant cryptocurrency wallets using **ternary (base-3) seed expansion** combined with three leading Post-Quantum Cryptography (PQC) algorithms.
 
----
+It includes:
+- Master + role-based keychain generation
+- Robust validation tools
+- Hybrid multi-algorithm signing
+- Ring-based password manager
+- An educational interactive game (#HASHBREAKER)
 
-## Features
-
-✅ **Post-Quantum Secure Algorithms**
-- **Falcon-512**: Lattice-based signatures (128-bit security, ~690 B signatures)
-- **ML-DSA-65** (Dilithium3): Lattice-based signatures (192-bit security, ~2701 B signatures)
-- **SLH-DSA-SHA2-128s** (SPHINCS+): Hash-based signatures (128-bit security, ~7856 B signatures)
-
-✅ **Ternary PQC Seed Expansion (SPX-QEC Pipeline)**
-- 6000-trit cryptographically secure seed
-- SPX-QEC pattern cutting for enhanced entropy distillation
-- SHAKE-256 master pool expansion
-- Converts to 750+ bytes of master material
-
-✅ **Complete Key Material**
-- Master keypairs for all 3 algorithms
-- 9 role-specific keypairs (27 total keys per algorithm)
-- Full public **and** private keys exported in JSON
-- Each role can have independent signing capability
-
-✅ **Multiple Validators & Testers**
-- **validate_kchain**: Full cryptographic sign + verify operations
-- **pqc_key_validator_robust**: Enhanced validator with error tolerance
-- **test_algs**: Test algorithm availability in your liboqs build
-- **list_pqc_sigs**: Display all enabled signature schemes
-- **list_all_algs**: Comprehensive algorithm listing utility
-- Tests master keys + all role keys (0-8)
-- Tolerant to whitespace, newlines, and formatting variations
-- Perfect for "Test Your Build" after key generation
-
-✅ **Hybrid Signing & Advanced Tools**
-- **pqc_hybrid_signer**: Multi-algorithm signing utility for defense-in-depth
-- **pqc_sphincs_plus**: Dedicated SPHINCS+ implementation
-- **pqc_keygen_new**: Enhanced keychain generator with improved entropy distillation
-
-✅ **Ring Password Generator**
-- Hashes passwords using SHA3-512
-- Generates Ring0 proof for ringCT wrapper
-- Creates `.ssp` files with encoded Ring0 data
-- Full ringCT-compatible output format
-
-✅ **#HASHBREAKER Interactive Game**
-- Uses SPX-QEC-distilled key material as game challenge
-- Progressive difficulty levels (1-4, up to 1337)
-- Leaderboard system with session tracking
-- Score multipliers and bonus system
-- Auto-save with manual load capability
-- Debug commands for testing and development
-
-✅ **Production Ready**
-- Designed for self-verifying coin (SVC) wallet integration
-- Direct liboqs C API (no wrapper limitations)
-- Tested on Kubuntu 24.04 / Ubuntu 22.04+
+Designed for **process-separation wallets** and **Self-Verifying Coins (SVC)**, this project lets you generate, test, and use real quantum-safe keys today: with full source code, one-click setup, and a fun game to explore the system.
 
 ---
 
-## Quick Start (Recommended)
+## ✨ Key Features
 
-### 1. Prerequisites (Kubuntu 24.04 / Ubuntu)
+- **Ternary Seed Expansion**: Starts with high-entropy input and expands to a 6000-trit master seed using SPX-QEC (pattern cutting + SHAKE-256)
+- **Three PQC Algorithms**: Falcon-512, ML-DSA-65 (Dilithium), SLH-DSA-SHA2-128s (SPHINCS+)
+- **Full Keychain Tools**: Generator, validator, hybrid signer, and robust tester
+- **Ring Password System**: SHA3-512 hashed passwords with Ring0 proof files (.ssp) for ringCT compatibility
+- **#HASHBREAKER Game**: Interactive Python game that uses your generated keys as challenge data (progressive levels, leaderboard, debug commands)
+- **Testing-Ready Build**: Works with liboqs, one-command setup, JSON export, full sign/verify testing
 
-```bash
-sudo apt install build-essential git cmake pkg-config libssl-dev libjansson-dev python3-tk
-```
+---
 
-### 2. Clone & Setup
+## How It Works
+
+1. You provide entropy → the system expands it into a massive **6000-trit ternary master seed**.
+2. From that single seed, it deterministically derives **master + 9 role keys** for each of the three PQC algorithms.
+3. You can instantly validate every key by performing real cryptographic sign/verify operations.
+4. Hybrid signing lets you create signatures that combine all three algorithms for maximum defense-in-depth.
+5. The included game lets you “play” with your keys: turning cryptography into an educational and entertaining experience.
+
+This creates a **process-separated wallet** where different roles (spending, staking, viewing, etc.) have isolated keys, all derived from one secure ternary root.
+
+---
+
+## Quick Start
 
 ```bash
 git clone https://github.com/DigiMancer3D/ternaryPQC.git
 cd ternaryPQC
-
-# One-click setup (builds liboqs 0.12.x if needed)
 chmod +x setup.sh
-./setup.sh
+./setup.sh          # Builds liboqs + all tools
 ```
+
+**Most useful commands:**
+- `./pqc_keygen` → Generate a full keychain
+- `./validate_kchain` → Test all keys with real signatures
+- `python3 game.py` → Play #HASHBREAKER
+- `./pqc_hybrid_signer` → Create multi-algorithm signatures
+
+See `BUILD_INSTRUCTIONS.md` for advanced setup.
 
 ---
 
-## Complete Usage Workflow
+## Terminology Table
 
-### Step 1: Test Your Environment (Environment Verification)
-
-Before generating keys, verify that all algorithms are available in your liboqs build:
-
-```bash
-# List all supported algorithms in your liboqs build
-gcc -o list_pqc_sigs list_pqc_sigs.c -loqs -O2
-./list_pqc_sigs
-```
-
-**Expected output:**
-```
-=== Supported PQC Signature Schemes in your liboqs ===
-
-  ✓ SPHINCS+-SHA2-128s  (enabled)
-  ✓ Falcon-512  (enabled)
-  ✓ ML-DSA-65  (enabled)
-  ... (more algorithms)
-
-=== End of list ===
-```
-
-### Step 2: Test Algorithms (Verify Your Setup)
-
-Verify your specific algorithms are working:
-
-```bash
-gcc -o test_algs test_algs.c -loqs -O2
-./test_algs
-```
-
-**Expected output:**
-```
-Testing SPHINCS+ variants:
-  SPHINCS+-SHA2-128s: ✓ AVAILABLE
-  SPHINCS+-SHAKE-128s: ✓ AVAILABLE
-  SPHINCS+-SHA2-128s-robust: ✓ AVAILABLE
-  SPHINCS+-SHAKE-128s-robust: ✓ AVAILABLE
-```
-
-### Step 3: Generate Keys (Master Keychain Generation)
-
-Generate a new keychain with the SPX-QEC ternary distillation pipeline:
-
-```bash
-./pqc_keygen
-```
-
-Or use the enhanced version with improved entropy:
-
-```bash
-./pqc_keygen_new
-```
-
-**Output:** `svc-wallet/pqc_master_YYYYMMDD_HHMMSS.kchain`
-
-**Console output:**
-```
-========== PQC Keychain Generator (SPX-QEC driven) ==========
-
-[1/7] Generating high-entropy 512-trit seed...
- Generated 512 ternary digits
-
-[2/7] Expanding to 10k+ trits with SPX-QEC...
- Expansion complete: 10247 trits
-
-[3/7] Finalizing to 6000-trit seed...
- Seed ready: 6000 trits
-
-[4/7] Feeding distilled trits into master entropy pool...
- Master pool ready (SHAKE-256 expanded)
-
-[5/7] Generating Master keypairs (Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s)...
- Master keys generated
-
-[6/7] Generating 9 Role keypairs...
- Role 0 generated
- Role 1 generated
- ...
- Role 8 generated
-
-Building JSON keychain...
-✅ Keychain saved to: svc-wallet/pqc_master_20260520_143022.kchain
-
-✅ Complete! All 3 algorithms (Falcon + Dilithium/ML-DSA + SPHINCS+/SLH-DSA) are now working.
-```
-
-### Step 4: Validate Your Keys (Cryptographic Verification)
-
-After generating keys, **always** validate them to confirm your liboqs setup is correct:
-
-```bash
-# Build the validator
-gcc -O2 -o validate_kchain validate_kchain.c \
-    -loqs -ljansson -I/usr/local/include -L/usr/local/lib
-
-# Run validation on the generated keychain
-./validate_kchain ./svc-wallet/pqc_master_*.kchain
-```
-
-Or use the robust validator for enhanced error handling:
-
-```bash
-gcc -O2 -o pqc_key_validator_robust pqc_key_validator_robust.c \
-    -loqs -ljansson -I/usr/local/include -L/usr/local/lib
-
-./pqc_key_validator_robust ./svc-wallet/pqc_master_*.kchain
-```
-
-**Example successful output:**
-
-```
-===== Keychain Validator & Sign/Verify Tester =====
-
-[1/4] Loading keychain file: ./svc-wallet/pqc_master_20260520_143022.kchain
-✓ JSON loaded
-
-[2/4] Parsing seed data...
-✓ Seed: 6000 ternary digits
-
-[3/4] Testing master Falcon-512 keys...
-  Falcon public key:  897 bytes
-  Falcon private key: 1281 bytes
-  Signature length: 690 bytes
-  ✓ Falcon sign/verify successful
-
-[4/4] Testing master SPHINCS+-SHA2-128s keys...
-  SPHINCS+ public key:  32 bytes
-  SPHINCS+ private key: 128 bytes
-  Signature length: 7856 bytes
-  ✓ SPHINCS+ sign/verify successful
-
-✅ All validations passed!
-   Keychain is valid and ready for use.
-```
-
-If validation passes, the keys are ready for production use.
-
-### Step 5: Hybrid Signing (Multi-Algorithm Signatures)
-
-Use the hybrid signer for defense-in-depth signing across multiple algorithms:
-
-```bash
-# Build hybrid signer
-gcc -O2 -o pqc_hybrid_signer pqc_hybrid_signer.c \
-    -loqs -ljansson -I/usr/local/include -L/usr/local/lib
-
-# Sign a message with all three algorithms
-./pqc_hybrid_signer ./svc-wallet/pqc_master_*.kchain "your message here"
-```
-
-This tool generates cryptographic signatures using Falcon-512, ML-DSA-65, and SPHINCS+ simultaneously for maximum security assurance.
-
-### Step 6: Setup Ring Password (Ring-based Authentication)
-
-Generate a Ring-authenticated password proof:
-
-```bash
-# Build Ring Password generator
-gcc -o ring_password ring_password.c -loqs -lssl -lcrypto -O2
-
-# Generate password proof
-./ring_password "your super secret password here"
-```
-
-**Output:**
-```
-✅ Created: abcxyz.ssp
-Ring0 (password hash): a41217303c74a5a6fd401da567f9234f9d5900d191139eb927ace61f5b47b863...
-
-Full ringCT wrapper ready (Ring0 → Ring3 + ringCT proof).
-```
-
-The generated `.ssp` file contains:
-- Filename header (Ring0 identifier)
-- Full SHA3-512 hash of the password
-- "Super Secret Password" footer (for manual verification)
-
-### Step 7: Play #HASHBREAKER (Interactive Game)
-
-Launch the interactive cryptographic game:
-
-```bash
-# Make game executable
-chmod +x game.py
-
-# Run the game
-./game.py
-```
-
-**Game Features:**
-- **Modes**: Use text input, load files, or use generated keychain hashes
-- **Levels**: Progress from level 1 to 4 based on score
-- **Difficulty**: Auto-adjusts based on performance (New Game → Easy → Normal → Hard → 1337)
-- **Scoring**: Points = matches × level, with bonuses for level completion
-- **Leaderboard**: Top 10 scores tracked with session IDs
-- **Debug Commands**: `isuck`, `simwin`, `simhit`, `comanlist`, etc.
-
-**Debug Commands** (embed in text input):
-```
-isuck              - Show win state
-simwin             - Simulate level win
-simhit             - Simulate good match
-simmiss            - Simulate miss
-comanlist          - Show all commands
-diffplus           - Increase difficulty
-diffminus          - Decrease difficulty
-newsessvalueplease - Generate new session
-```
+| Term                  | What it really is                              | Plain English                                      |
+|-----------------------|------------------------------------------------|----------------------------------------------------|
+| **ternaryPQC**        | The whole project                              | Ternary-based Post-Quantum Crypto toolkit          |
+| **6000-trit seed**    | Massive expanded master entropy                | The super-secure root everything comes from        |
+| **SPX-QEC**           | Custom seed expansion pipeline                 | The “magic” that turns small input into huge safe seed |
+| **Keychain**          | JSON file with all master + role keys          | One file containing your entire secure wallet      |
+| **Hybrid Signer**     | Signs with Falcon + Dilithium + SPHINCS+       | Defense-in-depth signatures                        |
+| **Ring Password**     | SHA3-512 + Ring0 proof (.ssp)                  | Secure password system compatible with ringCT      |
+| **#HASHBREAKER**      | Interactive Python game                        | Fun way to test and learn your keys                |
 
 ---
 
-## Build Instructions (Manual Build)
+## Project Status
 
-If you prefer to build everything manually:
+**🚀 Active & Functional • Cryptographically-Ready Components**
 
-```bash
-# Set library path
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+- All core C tools compile and work on Ubuntu 22.04/24.04
+- Game is fully playable and educational
+- Designed for future wallet integration
+- Still Finalizing for the SVC (Self-Verifying Coins) Project
 
-# Build all utilities
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o pqc_keygen pqc_keygen.c \
-    -loqs -ljansson -lm -O3
+**Security Note**: This is an experimental research implementation. Private keys are exported in plain JSON for controlled environments. Always use proper key management (GPG, hardware, air-gapped), & do not use real funds.
 
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o pqc_keygen_new pqc_keygen_new.c \
-    -loqs -ljansson -lm -O3
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o validate_kchain validate_kchain.c \
-    -loqs -ljansson -lm -O3
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o pqc_key_validator_robust pqc_key_validator_robust.c \
-    -loqs -ljansson -lm -O3
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o pqc_hybrid_signer pqc_hybrid_signer.c \
-    -loqs -ljansson -lm -O3
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o pqc_sphincs_plus pqc_sphincs_plus.c \
-    -loqs -O3
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o test_algs test_algs.c \
-    -loqs -O2
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o list_pqc_sigs list_pqc_sigs.c \
-    -loqs -O2
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o list_all_algs list_all_algs.c \
-    -loqs -O2
-
-gcc -I/usr/local/include -L/usr/local/lib \
-    -o ring_password ring_password.c \
-    -lssl -lcrypto -O2
-
-# Create wallet directory
-mkdir -p svc-wallet
-```
-
-**Add to ~/.bashrc for permanent library path:**
-```bash
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-```
+Contributions, testing on other distros, GUI development, or help integrating into actual wallets are extremely welcome!
 
 ---
 
-## Project Structure
-
-```
-ternaryPQC/
-├── pqc_keygen.c                    # Main keychain generator (SPX-QEC driven)
-├── pqc_keygen_new.c                # Enhanced keychain generator
-├── validate_kchain.c               # Cryptographic validator (sign/verify test)
-├── pqc_key_validator_robust.c      # Robust validator with enhanced error handling
-├── pqc_hybrid_signer.c             # Multi-algorithm hybrid signing utility
-├── pqc_sphincs_plus.c              # SPHINCS+ specific implementation
-├── test_algs.c                     # Algorithm availability tester
-├── list_pqc_sigs.c                 # List enabled signature schemes
-├── list_all_algs.c                 # Comprehensive algorithm listing utility
-├── ring_password.c                 # Ring-authenticated password generator
-├── game.py                         # #HASHBREAKER interactive game
-├── setup.sh                        # One-click setup script
-├── svc-wallet/                     # .kchain files (generated)
-├── BUILD_INSTRUCTIONS.md           # Additional build details
-├── README.md                       # This file
-├── icon.png                        # Game window icon
-└── image.png                       # Game logo
-```
-
----
-
-## Programs Reference
-
-| Program | Purpose | Input | Output |
-|---------|---------|-------|--------|
-| **pqc_keygen** | Generate keychain (standard) | None (generates entropy) | `pqc_master_*.kchain` |
-| **pqc_keygen_new** | Generate keychain (enhanced) | None (generates entropy) | `pqc_master_*.kchain` |
-| **validate_kchain** | Verify keychain validity | `*.kchain` file | Sign/verify test results |
-| **pqc_key_validator_robust** | Robust keychain validation | `*.kchain` file | Enhanced sign/verify results |
-| **pqc_hybrid_signer** | Multi-algorithm signing | Keychain + message | Falcon + ML-DSA + SPHINCS+ signatures |
-| **pqc_sphincs_plus** | SPHINCS+ specific signer | Keychain + message | SPHINCS+ signature |
-| **test_algs** | Check algorithm support | None | Algorithm availability |
-| **list_pqc_sigs** | List enabled algorithms | None | Signature scheme list |
-| **list_all_algs** | List all algorithms | None | Comprehensive algorithm list |
-| **ring_password** | Generate Ring0 proof | Password string | `*.ssp` file + Ring0 hash |
-| **game.py** | Play #HASHBREAKER | Text/File/Hash | Leaderboard scores |
-
----
-
-## Output Format (.kchain JSON)
-
-The generated `.kchain` file is a complete JSON document:
-
-```json
-{
-  "seed": {
-    "ternary_6000_trits": "012010...",
-    "master_pool_hex": "a1b2c3..."
-  },
-  "keys": {
-    "falcon_512_master_pk": "hex...",
-    "falcon_512_master_sk": "hex...",
-    "dilithium3_master_pk": "hex...",
-    "dilithium3_master_sk": "hex...",
-    "sphincs128s_master_pk": "hex...",
-    "sphincs128s_master_sk": "hex...",
-    "roles": [
-      {
-        "role": 0,
-        "falcon_512_pk": "hex...",
-        "falcon_512_sk": "hex...",
-        "dilithium3_pk": "hex...",
-        "dilithium3_sk": "hex...",
-        "sphincs128s_pk": "hex...",
-        "sphincs128s_sk": "hex..."
-      },
-      ...
-    ]
-  },
-  "generated_at": "2026-05-20T14:30:22Z",
-  "algorithm": "Falcon-512 + ML-DSA-65 + SLH-DSA-SHA2-128s (SPHINCS+)",
-  "library": "liboqs 0.12.x",
-  "note": "All keys are driven by the SPX-QEC ternary distillation pipeline."
-}
-```
-
----
-
-## Algorithm Comparison
-
-| Metric | Falcon-512 | ML-DSA-65 | SLH-DSA-128s |
-|--------|-----------|----------|------------|
-| Security | 128-bit | 192-bit | 128-bit |
-| Signature Size | 690 B | 2701 B | 7856 B |
-| Public Key Size | 897 B | 1472 B | 32 B |
-| Secret Key Size | 1281 B | 2560 B | 128 B |
-| Performance | Very Fast | Fast | Moderate |
-| Type | Lattice | Lattice | Hash-based |
-
-**Why three algorithms?** Defense-in-depth for critical transactions. Falcon for speed, ML-DSA for security margin, SPHINCS+ for quantum-resistant hash guarantees.
-
----
-
-## Supported Algorithms (Full List from liboqs 0.12.x)
-
-Run `./list_pqc_sigs` or `./list_all_algs` to see your specific build. Common signature schemes:
-
-**Lattice-based:**
-- Falcon-512, Falcon-1024
-- ML-DSA-44, ML-DSA-65, ML-DSA-87
-- CRYSTALS-Dilithium2, Dilithium3, Dilithium5
-
-**Hash-based:**
-- SPHINCS+-SHA2-128s, SPHINCS+-SHA2-128f
-- SPHINCS+-SHAKE-128s, SPHINCS+-SHAKE-128f
-- SLH-DSA-SHA2-128s, SLH-DSA-SHA2-128f
-
-**Other:**
-- XMSS variants, FAWKES, PICNIC variants
-
----
-
-## Wallet Integration
-
-See the original C integration example or use the validator-confirmed keys directly:
-
-```c
-// Load keychain
-json_t *root = json_load_file("path/to/file.kchain", 0, NULL);
-
-// Extract master Falcon public key
-const char *pk_hex = json_string_value(
-    json_object_get(json_object_get(root, "keys"), "falcon_512_master_pk")
-);
-
-// Use with liboqs for signing/verification
-```
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| **liboqs not found** | Run `export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH` and add to `~/.bashrc` |
-| **Validator fails to parse** | Use `pqc_key_validator_robust.c` (robust version handles formatting variations) |
-| **Test algorithm fails** | Run `./list_pqc_sigs` or `./list_all_algs` to check what's available in your build |
-| **gcc: command not found** | Install with `sudo apt install build-essential` |
-| **jansson library missing** | Install with `sudo apt install libjansson-dev` |
-| **Python game won't start** | Ensure `python3-tk` is installed: `sudo apt install python3-tk` |
-| **Icon/Image files missing** | Game will still run; icons are optional enhancements |
-
-**Test liboqs installation:**
-```bash
-gcc -o test_oqs -xc - -loqs << 'EOF'
-#include <oqs/oqs.h>
-#include <stdio.h>
-int main() {
-    OQS_randombytes_switch_algorithm("system");
-    printf("OQS initialized!\n");
-    return 0;
-}
-EOF
-./test_oqs
-```
-
----
-
-## Security Notes
-
-🔐 **Private keys are fully exposed in JSON** (intended for your controlled environment)  
-✅ **All entropy is cryptographically secure** (via OpenSSL EVP + liboqs)  
-✅ **Validator performs live sign/verify**: only mathematically valid keys pass  
-✅ **Hybrid signer**: Multiple algorithms provide defense-in-depth  
-✅ **Ring password**: SHA3-512 hashing, suitable for ringCT integration  
-✅ **Game security**: Uses actual keychain data as challenge material  
-⚠️ **Always store `.kchain` files with strict permissions:**
-```bash
-chmod 600 svc-wallet/*.kchain
-```
-
-**Consider file-level encryption for production:**
-```bash
-gpg --symmetric --cipher-algo AES256 svc-wallet/pqc_master_*.kchain
-```
-
----
-
-## Performance
-
-- **Key generation**: ~2-3 seconds (includes SPX-QEC distillation)
-- **Validation**: ~1-2 seconds (all algorithms tested)
-- **Hybrid signing**: ~3-5 seconds (all three algorithms)
-- **Binary size**: pqc_keygen ~500 KB, validate_kchain ~400 KB, pqc_hybrid_signer ~600 KB
-- **Game startup**: <1 second
-- **Ring password**: <100ms
-
----
-
-## References
-
-- **liboqs**: https://github.com/open-quantum-safe/liboqs
-- **Falcon**: https://falcon-sign.info/
-- **ML-DSA / Dilithium**: https://pq-crystals.org/dilithium/
-- **SPHINCS+ / SLH-DSA**: https://sphincs.org/
-- **Post-Quantum Cryptography**: https://csrc.nist.gov/projects/post-quantum-cryptography/
-- **RingCT**: https://lab.getmonero.org/
-
----
-
-## License
-
-This project is part of the ternaryPQC initiative for quantum-resistant infrastructure.
-
----
-
-**Made for the ternaryPQC project**: Quantum-resistant infrastructure for [self-verifying coin (SVC) wallets](https://github.com/DigiMancer3D/quantum_fruit/tree/main/SVC).
-
-**Components:**
-- `pqc_keygen` / `pqc_keygen_new`: SPX-QEC ternary seed distillation + multi-algorithm key generation
-- `validate_kchain` / `pqc_key_validator_robust`: Cryptographic verification suite
-- `pqc_hybrid_signer`: Multi-algorithm signing for defense-in-depth
-- `pqc_sphincs_plus`: Dedicated SPHINCS+ implementation
-- `ring_password`: Ring0 proof generator for ringCT integration
-- `game.py`: #HASHBREAKER interactive learning/testing tool
-- `test_algs` / `list_pqc_sigs` / `list_all_algs`: Environment diagnostics
-
-**Repository**: https://github.com/DigiMancer3D/ternaryPQC  
-**Last Updated**: 2026-05-25
