@@ -17,7 +17,7 @@ Designed for **process-separation wallets** and **Self-Verifying Coins (SVC)**, 
 
 ## ✨ Key Features
 
-- **Ternary Seed Expansion**: Starts with high-entropy input and expands to a 6000-trit master seed using SPX-QEC (pattern cutting + SHAKE-256)
+- **Ternary Seed Expansion**: Starts with high-entropy input by expanding to a 6000-trit master seed using SPX-QEC (pattern cutting + SHAKE-256)
 - **Three PQC Algorithms**: Falcon-512, ML-DSA-65 (Dilithium), SLH-DSA-SHA2-128s (SPHINCS+)
 - **Full Keychain Tools**: Generator, validator, hybrid signer, and robust tester
 - **Ring Password System**: SHA3-512 hashed passwords with Ring0 proof files (.ssp) for ringCT compatibility
